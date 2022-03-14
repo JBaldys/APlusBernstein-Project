@@ -23,7 +23,7 @@ Quantopian Lecture Series - Factor Analysis - https://www.youtube.com/watch?v=v5
 -	3/14-3/19: EDA, feature engineering
 -	3/18: In-person visit with Che from Alliance Bernstein, 2-3 pm (prioritize making this meeting!)
 -	3/20-3/26: EDA cont., begin modeling
--	3/27-4/2: modeleling, beginning of model revision / novel signal creation (all group members should have already been doing research into novel signal creation up until this point)
+-	3/27-4/2: modeling, beginning of model revision / novel signal creation (all group members should have already been doing research into novel signal creation up until this point)
 -	4/3-4/16: “flex time”, issues during this time will be dependent on what group members feel their bandwidth looks like at this point
 -	4/17-4/30: presentation creation and paper writing
 -	5/2: presentation practice, final revisions, final presentation
