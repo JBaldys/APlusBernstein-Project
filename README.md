@@ -34,17 +34,17 @@ Quantopian Lecture Series - Factor Analysis - https://www.youtube.com/watch?v=v5
 -   Username:
 -   Password:
 - Factset
--   Username:
--   Password:
+-   Username: jessica.baldys3@factset.net
+-   Password: #VandyOwen22
 - CapIQ
 -   Username:
 -   Password:
 - Refinitiv (can access Refinitiv data through the Eikon API)
--   Username:
--   Password:
+-   Username: Jessica.L.Baldys@vanderbilt.edu
+-   Password: #Vandy22002222
 - CRSP
--   Username:
--   Password:
+-   Username: Crspuser
+-   Password: Ecnanif2324
 
 # Zoom Link
 Jessica Baldys is inviting you to a scheduled Zoom meeting.
