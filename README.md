@@ -19,6 +19,8 @@ Quantopian Lecture Series - Factor Analysis - https://www.youtube.com/watch?v=v5
 
 (see other videos from Quantopian too!)
 
+For macroeconomic data, a good resource is: https://fred.stlouisfed.org/
+
 # Tentative Timeline / Important Dates
 -	3/14-3/19: EDA, feature engineering
 -	3/18: In-person visit with Che from Alliance Bernstein, 2-3 pm (prioritize making this meeting!)
