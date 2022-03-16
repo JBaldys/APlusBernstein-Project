@@ -33,16 +33,16 @@ Quantopian Lecture Series - Factor Analysis - https://www.youtube.com/watch?v=v5
 - Bloomberg
 -   Username:
 -   Password:
-- Factset
+- Factset - https://login.factset.com/login/xoM4jTODNt1DQZiEFfv2epjgwEy_90OY4PMHmCT4nVWBNoOUq5l1gngk-6goz21COdbrZuVD15k0pCIYD-6IuetP5fqblSARR2M8A421ykG2qY2giA_YLQ/xoM55/Qxo97
 -   Username: jessica.baldys3@factset.net
 -   Password: #VandyOwen22
 - CapIQ
 -   Username:
 -   Password:
-- Refinitiv (can access Refinitiv data through the Eikon API)
+- Refinitiv (can access Refinitiv data through the Eikon API) - https://workspace-refinitiv-com.proxy.library.vanderbilt.edu/
 -   Username: Jessica.L.Baldys@vanderbilt.edu
 -   Password: #Vandy22002222
-- CRSP
+- CRSP - https://wrds-www.wharton.upenn.edu/login/
 -   Username: Crspuser
 -   Password: Ecnanif2324
 
