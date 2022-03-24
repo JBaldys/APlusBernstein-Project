@@ -17,7 +17,7 @@ def extract_category(ddf_all, category: str, by: str):
     p = re.compile(r" |&|/")
     ddf = ddf_all.loc[ddf_all[by] == category, ["Date", "Variable", "value"]]
     ddf = ddf.pivot(index="Date", columns="Variable", values="value")
-    category = p.sub("-", category, 1).replace("& ", "").lower()
+    category = p.sub("-", category, 1).replace("& ", "").replace(" ", "-").lower()
     return ddf.to_parquet(
         processed_data_dir / "split" / by.lower() / f"{category}.parquet"
     )
