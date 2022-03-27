@@ -9,6 +9,8 @@ split-subcategory:
 split-category:
 	python src/data/split_category.py Category
 
+summary:
+	python src/data/summary_category.py
 
 pythonpath:
 	export PYTHONPATH="${PYTHONPATH}:${pwd}"

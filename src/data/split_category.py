@@ -3,27 +3,31 @@ import sys
 from typing import Literal, Union
 
 import dask as dk
-import dask.dataframe as dd
 import pandas as pd
-import pyarrow
 from src.constants import processed_data_dir, raw_data_dir, raw_data_name
 
 
 def read_sheet(sheet: int):
-    return dk.delayed(pd.read_excel)(raw_data_dir / raw_data_name, sheet_name=sheet)
+    return dk.delayed(pd.read_excel)(
+        raw_data_dir / raw_data_name, sheet_name=sheet
+    )
 
 
 def extract_category(ddf_factors, ddf_categories, category: str, by: str):
     p = re.compile(r" |&|/")
     factors = ddf_categories.loc[ddf_categories[by] == category, "Variable"]
     ddf = ddf_factors[factors]
-    category = p.sub("-", category, 1).replace("& ", "").replace(" ", "-").lower()
+    category = (
+        p.sub("-", category, 1).replace("& ", "").replace(" ", "-").lower()
+    )
     return ddf.to_parquet(
         processed_data_dir / "split" / by.lower() / f"{category}.parquet"
     )
 
 
-def split_df(by: Union[Literal["Category"], Literal["Subcategory"]] = "Subcategory"):
+def split_df(
+    by: Union[Literal["Category"], Literal["Subcategory"]] = "Subcategory"
+):
     if by not in ["Category", "Subcategory"]:
         raise Exception(
             "Invalid split option, must be either 'Category' or 'Subcategory'"
