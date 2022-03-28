@@ -52,8 +52,5 @@ def summarize_category(file: str):
 
 
 if __name__ == "__main__":
-    out = []
-    for file in list_category_files():
-        out.append(summarize_category(file))
-
-    compute(out)
+    out = [summarize_category(file) for file in list_category_files()]
+    compute(**out)

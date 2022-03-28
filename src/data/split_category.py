@@ -20,8 +20,12 @@ def extract_category(ddf_factors, ddf_categories, category: str, by: str):
     category = (
         p.sub("-", category, 1).replace("& ", "").replace(" ", "-").lower()
     )
+    return ddf, category
+
+
+def write_category(ddf, category: str):
     return ddf.to_parquet(
-        processed_data_dir / "split" / by.lower() / f"{category}.parquet"
+        processed_data_dir / "split" / "category" / f"{category}.parquet"
     )
 
 
@@ -35,10 +39,13 @@ def split_df(
     ddf_factors = read_sheet(1)
     ddf_categories = read_sheet(2)
     categories = ddf_categories[by].unique().compute()
-    ddfs = [
-        extract_category(ddf_factors, ddf_categories, category, by)
-        for category in categories
-    ]
+    ddfs = map(
+        lambda x: write_category(*x),
+        [
+            extract_category(ddf_factors, ddf_categories, category, by)
+            for category in categories
+        ],
+    )
 
     dk.compute(*ddfs)
     return True
