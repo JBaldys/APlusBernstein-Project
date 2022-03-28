@@ -47,12 +47,9 @@ def split_df(
         ],
     )
 
-    dk.compute(*ddfs)
-    return True
+    return ddfs
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        split_df(sys.argv[1])
-    else:
-        split_df()
+    ddfs = split_df(sys.argv[1]) if len(sys.argv) > 1 else split_df()
+    dk.compute(ddfs)
