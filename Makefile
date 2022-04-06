@@ -12,5 +12,8 @@ split-category:
 summary:
 	python src/data/summary_category.py
 
+remove_missing:
+	python src/data/remove_missing.py
+
 pythonpath:
 	export PYTHONPATH="${PYTHONPATH}:${pwd}"
