@@ -103,7 +103,10 @@ def impute(factors: pd.DataFrame, categories: pd.DataFrame) -> pd.DataFrame:
 
 
 def train_test_split(
-    df: pd.DataFrame, outcomes: pd.DataFrame, mode: str = "regression"
+    df: pd.DataFrame,
+    outcomes: pd.DataFrame,
+    mode: str = "regression",
+    split_date: str = "2013-12-31",
 ) -> pd.DataFrame:
     if mode == "regression":
         usecols = [
@@ -124,7 +127,7 @@ def train_test_split(
             "`mode` should either be 'regression' or 'classification'"
         )
 
-    outcomes = outcomes[usecols].query("Date != '2000-05-30'")
+    outcomes = outcomes[usecols].iloc[1:, :]
 
     if mode == "regression":
         outcomes = outcomes.apply(
@@ -133,8 +136,8 @@ def train_test_split(
 
     df_all = df.merge(outcomes, on="Date")
 
-    return df_all.query("Date <= '2013-12-31'"), df_all.query(
-        "Date > '2013-12-31'"
+    return df_all.query(f"Date <= '{split_date}'"), df_all.query(
+        f"Date > '{split_date}'"
     )
 
 
