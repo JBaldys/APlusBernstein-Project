@@ -4,9 +4,9 @@ deps:
 	pip freeze > requirements.txt
 
 ## split data by subcategory
-split-subcategory:
+split_subcategory:
 	python src/data/split_category.py
-split-category:
+split_category:
 	python src/data/split_category.py Category
 
 summary:
@@ -17,3 +17,9 @@ remove_missing:
 
 pythonpath:
 	export PYTHONPATH="${PYTHONPATH}:${pwd}"
+
+regression_data:
+	python src/data/make_model_data.py
+
+classification_data:
+	python src/data/make_model_data.py classification
