@@ -1,45 +1,61 @@
+import pickle as pkl
 import sys
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import numpy as np
 import pandas as pd
-from src.constants import model_data_dir, raw_data_dir, raw_data_name
+from sklearn.preprocessing import (
+    MinMaxScaler,
+    PowerTransformer,
+    QuantileTransformer,
+    StandardScaler,
+)
+from src.constants import (
+    model_data_dir,
+    models_dir,
+    raw_data_dir,
+    raw_data_name,
+)
 
 
-def scale_cols(df: pd.DataFrame, method="mean_std", func=None) -> pd.DataFrame:
-    if func is not None:
-        return df.apply(func)
-    else:
-        if method == "mean_std":
-            return df.apply(
-                lambda x: (x - x.mean()) / x.std()
-                if pd.api.types.is_numeric_dtype(x)
-                else x
-            )
-        elif method == "min_max":
-            return df.apply(
-                lambda x: (x - x.min()) / (x.max() - x.min())
-                if pd.api.types.is_numeric_dtype(x)
-                else x
-            )
-        else:
-            raise NotImplementedError(
-                "`method` must be either `mean_std` or `min_max`"
-            )
+def scale_fit(df: pd.DataFrame, method="standard", scale_func=None):
+    if scale_func is not None:
+        return df.apply(scale_func)
+
+    scalers = {
+        "min_max": MinMaxScaler(),
+        "standard": StandardScaler(),
+        "yeo_johnson": PowerTransformer(method="yeo-johnson"),
+        "quantile_uniform": QuantileTransformer(),
+        "quantile_normal": QuantileTransformer(output_distribution="normal"),
+    }
+
+    scaler = scalers.get(method)
+    if scaler is None:
+        raise NotImplementedError(
+            "`method` must be either 'standard', 'yeo_johnson', or 'min_max'"
+        )
+
+    scaler = scaler.fit(df)
+    df_scaled = scaler.transform(df)
+    return pd.DataFrame(df_scaled, index=df.index, columns=df.columns), scaler
 
 
-def import_data(
-    scale: bool = True, scale_method="mean_std"
-) -> Tuple[pd.DataFrame]:
+def save_scaler(scaler, name: str, save_dir: str = models_dir):
+    with open(f"{save_dir}/{name}", "wb") as f:
+        pkl.dump(scaler, f)
+
+
+def import_data(scale_method="yoe_johnson"):
     factors = pd.read_excel(raw_data_dir / raw_data_name, sheet_name=1)
     factors.set_index("Date", inplace=True)
-    if scale:
-        factors = scale_cols(factors, method=scale_method)
+    factors, scaler = scale_fit(factors, scale_method)
+
     outcomes = pd.read_excel(raw_data_dir / raw_data_name, sheet_name=3)
     outcomes["Date"] = pd.to_datetime(outcomes["Date"])
     categories = pd.read_excel(raw_data_dir / raw_data_name, sheet_name=2)
 
-    return factors, outcomes, categories
+    return factors, outcomes, categories, scaler
 
 
 def lag_return(x: pd.Series, lag: int = 1) -> pd.Series:
@@ -72,20 +88,23 @@ def extract_sc(
     ]
 
 
-def clean_imputed_df(df: pd.DataFrame) -> pd.DataFrame:
+def clean_imputed_df(
+    df: pd.DataFrame,
+    cols_to_fill=["Global Inflation-linked debt", "S&P 500 VRP"],
+) -> pd.DataFrame:
     """
     final clean up of imputed dataframe
     """
     # convert inf as na
-    df = df.reset_index().replace([-np.inf, np.inf], np.nan)
+    df = df.replace([-np.inf, np.inf], np.nan)
     # drop first and last rows
     # forward fill remaining nas
-    df = df.loc[~df["Date"].isin(["2000-05-30", "2021-06-30"])].fillna(
+    df = df.loc[~df.index.isin(["2000-05-30", "2021-06-30"])].fillna(
         method="ffill"
     )
-    for col in ["Global Inflation-linked debt", "S&P 500 VRP"]:
+    for col in cols_to_fill:
         df.loc[df[col].isna(), col] = (
-            df.drop(["Date", col], axis=1).loc[df[col].isna(), :].mean(axis=1)
+            df.drop([col], axis=1).loc[df[col].isna(), :].mean(axis=1)
         )
 
     return df
@@ -94,11 +113,10 @@ def clean_imputed_df(df: pd.DataFrame) -> pd.DataFrame:
 def impute(
     factors: pd.DataFrame,
     categories: pd.DataFrame,
-    scale: bool = True,
-    scale_method="mean_std",
+    scale_method="min_max",
     return_func=None,
-) -> pd.DataFrame:
-    def impute_col(col: str) -> pd.DataFrame:
+):
+    def impute_col(col: str) -> pd.Series:
         """
         Impute column with mean return values in its subcategory
         """
@@ -132,9 +150,9 @@ def impute(
     df_imputed = pd.concat(cols_imputed, axis=1)
     df_clean = clean_imputed_df(df_imputed)
 
-    if scale:
-        df_clean = scale_cols(df_clean, method=scale_method)
-    return df_clean
+    df_clean, scaler = scale_fit(df_clean, scale_method)
+
+    return df_clean, scaler
 
 
 def train_test_split(
@@ -173,12 +191,18 @@ def train_test_split(
 
 if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "regression"
-    factors, outcomes, categories = import_data(
-        scale=True, scale_method="mean_std"
+    scale_method_first = "quantile_normal"
+    scale_method_second = "quantile_uniform"
+    factors, outcomes, categories, scaler_first = import_data(
+        scale_method=scale_method_first
     )
-    df_clean = impute(factors, categories, scale=True, scale_method="min_max")
-    df_clean = df_clean.round(4)
+    df_clean, scaler_second = impute(
+        factors, categories, scale_method=scale_method_second
+    )
+    df_clean = df_clean.round(4).reset_index()
     train, test = train_test_split(df_clean, outcomes, mode)
 
     train.to_csv(model_data_dir / f"train_{mode}.csv", index=False)
     test.to_csv(model_data_dir / f"test_{mode}.csv", index=False)
+    save_scaler(scaler_first, f"scaler_first_{scale_method_first}.pkl")
+    save_scaler(scaler_second, f"scaler_second_{scale_method_second}.pkl")
