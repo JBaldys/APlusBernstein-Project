@@ -1,5 +1,6 @@
 import pickle as pkl
 import sys
+from random import choice
 from typing import Dict, List
 
 import numpy as np
@@ -45,6 +46,16 @@ def save_scaler(scaler, name: str, save_dir: str = models_dir):
         pkl.dump(scaler, f)
 
 
+def ffill_factors(factors: pd.DataFrame, cols: List[str]) -> pd.DataFrame:
+    """
+    Fill missing values with forward-filling
+    """
+    factors = factors.copy(deep=True)
+    for col in cols:
+        factors[col] = factors[col].fillna(method="ffill")
+    return factors
+
+
 def drop_missing_cols(df: pd.DataFrame, threshold: float = 0.8) -> pd.DataFrame:
     """
     Drop columns with missing values
@@ -88,79 +99,93 @@ def group_sc(categories) -> Dict:
 def extract_sc(
     factors: pd.DataFrame,
     sc_group: Dict,
-    exclude=["Policy Uncertainty", "Sentiment", "Inflation"],
+    exclude=[
+        "Policy Uncertainty",
+        "Sentiment",
+        "Inflation",
+    ],
 ) -> List[tuple]:
     """
-    returns 2-element tuple of (df_subcategory, List[column])
+    returns list of 2-element tuple of (df_subcategory, List[column_name])
     """
 
-    return [
-        (factors.loc[:, sc_group["Variable"][idx]], sc_group["Variable"][idx])
-        for idx, sc in enumerate(sc_group["Subcategory"])
-        if sc not in exclude
-    ]
+    ret = []
+    for idx, sc in enumerate(sc_group["Subcategory"]):
+        if sc not in exclude:
+            cols = [col for col in factors.columns if col in sc_group["Variable"][idx]]
+            df_subcategory = factors.loc[:, cols]
+            ret.append((df_subcategory, cols))
+
+    return ret
 
 
-def clean_imputed_df(
-    df: pd.DataFrame,
-    cols_to_fill=[
-        "Global Inflation-linked debt",
-        "S&P 500 VRP",
-        "S&P 500 Price-to-Earnings",
-        "P/B",
-        "US Value P/E over Growth P/E",
-        "US Value P/B over Growth P/B",
-        "EquityBond premia",
-    ],
-    replace_inf: bool = True,
-) -> pd.DataFrame:
-    """
-    final clean up of imputed dataframe
-    """
-    if replace_inf:
-        df = df.replace([-np.inf, np.inf], np.nan)
-    # drop first and last rows
-    # forward fill remaining nas
-    df = df.loc[~df.index.isin(["2000-05-30", "2021-06-30"])].fillna(method="ffill")
-    for col in cols_to_fill:
-        df.loc[df[col].isna(), col] = df.loc[df[col].isna(), :].median(axis=1)
-
-    return df
+def use_returns(df: pd.DataFrame, return_func=None, **kwargs) -> pd.DataFrame:
+    df = df.copy(deep=True)
+    if return_func is None:
+        return df.pct_change(fill_method=None)
+    else:
+        return df.apply(return_func, **kwargs)
 
 
 def impute(
     factors: pd.DataFrame,
     categories: pd.DataFrame,
-    return_func=None,
+    random: bool = True,  # random selection of imputed values
 ):
-    def impute_col(col: str) -> pd.Series:
+    def impute_col(df_sc: pd.DataFrame, col: str) -> pd.Series:
         """
         Impute column with median return values in its subcategory
         """
-        if (has_return_func := return_func) is None:
-            median_returns = df_sc.pct_change().median(axis=1)
+        if random:
+            values = df_sc.apply(choice, axis=1)
         else:
-            median_returns = df_sc.apply(return_func).median(axis=1)
-        df_col = df_sc.loc[:, col].copy()
-        idx_non_missing = df_col.notnull()
-        df_col.loc[~idx_non_missing] = median_returns.loc[~idx_non_missing]
-        if has_return_func:
-            df_col.loc[idx_non_missing] = return_func(df_col).loc[idx_non_missing]
-        else:
-            df_col.loc[idx_non_missing] = df_col.pct_change().loc[idx_non_missing]
-        return df_col
+            values = df_sc.median(axis=1)
+        values.update(df_sc[col])
+        return pd.Series(values, name=col)
 
     sc_group = group_sc(categories)
     sc_col_pairs = extract_sc(factors, sc_group)
-
     cols_imputed = []
 
     for df_sc, cols in sc_col_pairs:
         for col in cols:
-            col_imputed = impute_col(col)
-            cols_imputed.append(col_imputed)
+            if col in factors.columns:
+                col_imputed = impute_col(df_sc, col)
+                cols_imputed.append(col_imputed)
 
     return pd.concat(cols_imputed, axis=1)
+
+
+def replace_inf(df: pd.DataFrame, factor: int = 2) -> pd.DataFrame:
+    def replace_inf_col(col):
+        m = np.max(col[~np.isinf(col)])
+        return col.replace([np.inf, -np.inf], [m * factor, -m * factor])
+
+    return df.apply(replace_inf_col)
+
+
+# def clean_imputed_df(
+#     df: pd.DataFrame,
+#     # cols_to_fill=[
+#     #     "S&P 500 VRP",
+#     #     "S&P 500 Price-to-Earnings",
+#     #     "P/B",
+#     #     "US Value P/E over Growth P/E",
+#     #     "US Value P/B over Growth P/B",
+#     #     "EquityBond premia",
+#     # ],
+#     replace_inf: bool = True,
+# ) -> pd.DataFrame:
+#     """
+#     final clean up of imputed dataframe
+#     """
+#     # drop first and last rows
+#     # forward fill remaining nas
+#     df = df.loc[~df.index.isin(["2000-05-30", "2021-06-30"])].fillna(method="ffill")
+#     # for col in cols_to_fill:
+#     #     df.loc[df[col].isna(), col] = df.loc[df[col].isna(), :].median(axis=1)
+
+#     return df
 
 
 def train_test_split(
@@ -198,21 +223,48 @@ def train_test_split(
 if __name__ == "__main__":
     # configuration options
     mode = sys.argv[1] if len(sys.argv) > 1 else "regression"
-    scale_method_first = "quantile_normal"
-    scale_method_second = None
+    use_return = True
+    scale_method_first = None
+    scale_method_second = "quantile_normal"
+    ffill = True
+    factors_ffill = [
+        "Global Inflation-linked debt",
+        "Citi US Inflation Surprise Index",
+        "Global Economic Policy Uncertainty",
+        "US Trade Policy Uncertainty",
+        "US Monetary Policy Uncertainty",
+        "US Economic Policy Uncertainty",
+        "EU Economic Policy Uncertainty",
+        "China Economic Policy Uncertainty",
+        "US ISM Service PMI",
+        "US ISM Manufacturing PMI",
+        "Conference Board Consumer Confidence",
+        "University of Michigan Consumer Sentiment",
+        "EU Consumer Confidence",
+    ]
     add_seasonality = True
 
     factors, outcomes, categories = import_data(add_seasonality)
-    factors = drop_missing_cols(factors)
+    if ffill:
+        factors = ffill_factors(factors, factors_ffill)
+    factors = drop_missing_cols(factors, threshold=0.5)
 
     factors, scaler_first = scale_fit(factors, method=scale_method_first)
 
-    df_imputed = impute(factors, categories)
-    factors.update(df_imputed)
-    df_clean = clean_imputed_df(factors)
-    df_clean, scaler_second = scale_fit(df_clean, method=scale_method_second)
-    df_clean = df_clean.round(4).reset_index()
-    train, test = train_test_split(df_clean, outcomes, mode)
+    if use_return:
+        factors = use_returns(factors)
+
+    factors_imputed = impute(factors, categories)
+    factors.update(factors_imputed)
+    factors = replace_inf(factors)
+
+    # drop first and last rows
+    # forward fill remaining nas
+    factors = factors.iloc[1 : (factors.shape[0] - 1)].fillna(method="ffill")
+    factors = factors.fillna(method="bfill")
+    factors, scaler_second = scale_fit(factors, method=scale_method_second)
+    factors = factors.round(4).reset_index()
+    train, test = train_test_split(factors, outcomes, mode)
 
     train.to_csv(model_data_dir / f"train_{mode}.csv", index=False)
     test.to_csv(model_data_dir / f"test_{mode}.csv", index=False)
