@@ -19,11 +19,11 @@ from sklearn import metrics
 
 #col_names=['Score', 'output'],sep =",", header=None, sep='delimiter'
 import numpy as np
-pima=pd.read_csv ('/Users/anubhanagar/Desktop/APlusBernstein-Project/models/Tree_based /df_imputed_with_op.csv')
-pima = pima.iloc[:,1:]
+#pima=pd.read_csv ('/Users/anubhanagar/Desktop/APlusBernstein-Project/models/Tree_based /df_imputed_with_op.csv')
+#pima = pima.iloc[:,1:]
 #pima = pima.select_dtypes(np.number)
-pima.head()
-np.size(pima)
+#pima.head()
+#np.size(pima)
 
 
 X_train = pd.read_csv('/Users/anubhanagar/Desktop/APlusBernstein-Project/data/model/train_classification.csv')
@@ -62,50 +62,6 @@ clf = clf.fit(X_train.values,y_train)
 #Predict the response for test dataset
 y_pred = clf.predict(X_test.values) 
 print("Accuracy:",metrics.accuracy_score(y_test, y_pred)) 
-
-# Visualising the Random Forest Regression results
-
-# arrange for creating a range of values
-# from min value of x to max
-# value of x with a difference of 0.01
-# between two consecutive values
-import matplotlib.pyplot as plt
-X_grid = np.arange(min(X_train), max(X_train), 0.01)
-
-# reshape for reshaping the data into a len(X_grid)*1 array,
-# i.e. to make a column out of the X_grid value				
-X_grid = X_grid.reshape((len(X_grid), 1))
-
-# Scatter plot for original data
-plt.scatter(X_train, y_train, color = 'red')
-
-# plot predicted data
-plt.plot(X_grid, clf.predict(X_grid),color = 'black')
-plt.title('Random Forest Regression')
-plt.xlabel('DS Score')
-plt.ylabel('Likeliness of accepting the offer')
-plt.show()
-
-
-
-
-import matplotlib.pyplot as plt
-X_grid = np.arange(min(X_test), max(X_test), 0.01)
-
-# reshape for reshaping the data into a len(X_grid)*1 array,
-# i.e. to make a column out of the X_grid value				
-X_grid = X_grid.reshape((len(X_grid), 1))
-
-# Scatter plot for original data
-plt.scatter(X_test, y_test, color = 'red')
-
-# plot predicted data
-plt.plot(X_grid, clf.predict(X_grid),color = 'black')
-plt.title('Random Forest Regression')
-plt.xlabel('DS Score')
-plt.ylabel('Likeliness of accepting the offer')
-plt.show()
-
 
 
 
