@@ -36,14 +36,34 @@ def add_returns(
     return pd.concat([df] + returns, axis=1)
 
 
-def add_seasonal_features(df: pd.DataFrame, dates: Union[pd.Series, pd.Index]):
+def add_seasonal_features(
+    df: pd.DataFrame, dates: Union[pd.Series, pd.Index], dummy: bool = True
+):
     df = df.copy(deep=True)
     dates = pd.Series(pd.to_datetime(dates))
     # `values`` ignore index alignment
     df["month"] = dates.dt.month.values
-    df["year"] = dates.dt.year.values
     df["day"] = dates.dt.day.values
     df["weekday"] = dates.dt.weekday.values
+
+    return df
+
+
+def use_dummy_seasonal(
+    df: pd.DataFrame,
+) -> pd.DataFrame:
+    df = df.copy(deep=True)
+    df = pd.get_dummies(
+        df.astype(
+            {
+                "year": "category",
+                "month": "category",
+                "day": "category",
+                "weekday": "category",
+            }
+        ),
+        drop_first=True,
+    )
 
     return df
 
@@ -135,13 +155,17 @@ def use_target(
         df = use_next_day(df, col)
 
     if split:
-        return df.pop(col), df
+        new_col_name = f"{col}_next" if next_day else col
+        return df.pop(new_col_name), df
     else:
         return df
 
 
 def use_next_day(
-    df: pd.DataFrame, col: str, drop_original_col=True, drop_last_row=True
+    df: pd.DataFrame,
+    col: str,
+    drop_original_col=True,
+    drop_last_row=True,
 ) -> pd.DataFrame:
     df = df.copy(deep=True)
     df[f"{col}_next"] = df[col].shift(-1)
@@ -172,3 +196,19 @@ class BlockingTimeSeriesSplit:
             stop = start + k_fold_size
             mid = int(0.5 * (stop - start)) + start
             yield indices[start:mid], indices[mid + margin : stop]
+
+
+def split_folds(df: pd.DataFrame, n_folds: int = 5):
+    n_samples = df.shape[0]
+    fold_size = n_samples // n_folds
+    indices = np.arange(n_samples)
+    for i in range(n_folds):
+        start = i * fold_size
+        if (start + fold_size) > (n_samples - 1):
+            stop = n_samples - 1
+        else:
+            stop = start + fold_size
+
+        out_indices = indices[start:stop].tolist()
+        in_indices = np.concatenate([indices[0:start], indices[stop:]]).tolist()
+        yield in_indices, out_indices
