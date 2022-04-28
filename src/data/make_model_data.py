@@ -166,7 +166,7 @@ if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "regression"
     add_return = True
     scale_method_first = None
-    scale_method_second = "standard"
+    scale_method_second = "quantile_uniform"
     ffill = True
     # monthly factors
     factors_ffill = [
